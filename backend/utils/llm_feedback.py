@@ -3,43 +3,70 @@ import google.generativeai as genai
 import time
 import requests
 from dotenv import load_dotenv
-
-
+import requests
 
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_KEY = os.getenv("GEMINI_API_KEY")
 
-genai.configure(api_key=API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+# ---------------- GEMINI ----------------
+def gemini_call(prompt):
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    response = model.generate_content(prompt)
+
+    if response and hasattr(response, "text"):
+        return response.text
 
 
+def groq_call(prompt):
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "llama-3.1-8b-instant",
+            "messages": [{"role": "user", "content": prompt}]
+        }
+    )
+
+    data = response.json()
+
+    print("Groq response:", data)  # 🔍 DEBUG
+
+    if "choices" in data:
+        return data["choices"][0]["message"]["content"]
+
+    raise Exception(f"Groq API failed: {data}")
 
 
+def openrouter_call(prompt):
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model":"openrouter/auto",
+            "messages": [{"role": "user", "content": prompt}]
+        }
+    )
 
-# 🔥 OPENROUTER
-def openrouter_feedback(prompt):
-    try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}"
-            },
-            json={
-                "model": "mistral/mixtral-8x7b",
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        )
+    data = response.json()
 
-        data = response.json()
+    print("OpenRouter response:", data)  # 🔍 DEBUG
 
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
+    if "choices" in data:
+        return data["choices"][0]["message"]["content"]
 
-        return None
+    raise Exception(f"OpenRouter API failed: {data}")
 
-    except Exception as e:
-        print("OpenRouter failed:", e)
-        return None
+
 
 
 # 🔥 MODEL LIST (CLEANED)
@@ -63,27 +90,31 @@ def generate_feedback(resume_skills, missing_skills, score):
 
     print("🔍 Starting LLM fallback system...")
 
-    # 🔥 1. GEMINI
-    for model_name in GENAI_MODELS:
-        try:
-            start = time.time()
+    # 1️⃣ GEMINI
+    try:
+        print("👉 Trying Gemini...")
+        return gemini_call(prompt)
+    except Exception as e:
+        print("❌ Gemini failed:", e)
 
-            model = genai.GenerativeModel("gemini-2.5-flash")
+    # 2️⃣ GROQ
+    try:
+        print("👉 Trying Groq...")
+        return groq_call(prompt)
+    except Exception as e:
+        print("❌ Groq failed:", e)
 
-            response = model.generate_content(prompt)
+    # 3️⃣ OPENROUTER
+    try:
+        print("👉 Trying OpenRouter...")
+        return openrouter_call(prompt)
+    except Exception as e:
+        print("❌ OpenRouter failed:", e)
 
-            # ⏱ timeout check (10 sec max)
-            if time.time() - start > 10:
-                raise Exception("Timeout")
+    # 4️⃣ FINAL FALLBACK
+    print("⚠️ Using fallback")
 
-            if response and hasattr(response, "text"):
-                return response.text
-
-        except Exception as e:
-            print("Gemini slow/fail:", e)
-
-        # 🔥 FAST FALLBACK (instant)
-        return f"""
+    return f"""
     Evaluation:
 
     Strong skills: {', '.join(resume_skills[:3])}

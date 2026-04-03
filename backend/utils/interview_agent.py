@@ -2,6 +2,7 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 import time
+from backend.utils.llm_feedback import gemini_call, groq_call, openrouter_call
 
 load_dotenv()
 
@@ -9,7 +10,6 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
 
-# 🔥 GENERATE QUESTIONS
 def generate_questions(missing_skills):
 
     prompt = f"""
@@ -26,31 +26,37 @@ def generate_questions(missing_skills):
     - Numbered (1,2,3)
     """
 
+    print("🎯 Generating Questions...")
+
+    # 1️⃣ GEMINI
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        
-
-        start = time.time()
-
-        response = model.generate_content(prompt)
-
-        # ⏱ STOP if too slow
-        if time.time() - start > 10:
-            raise Exception("Timeout")
-
-        if response and hasattr(response, "text"):
-            return response.text
-
+        print("👉 Trying Gemini...")
+        return gemini_call(prompt)
     except Exception as e:
-        print("Gemini failed:", e)
+        print("❌ Gemini failed:", e)
 
-    # fallback
+    # 2️⃣ GROQ
+    try:
+        print("👉 Trying Groq...")
+        return groq_call(prompt)
+    except Exception as e:
+        print("❌ Groq failed:", e)
+
+    # 3️⃣ OPENROUTER
+    try:
+        print("👉 Trying OpenRouter...")
+        return openrouter_call(prompt)
+    except Exception as e:
+        print("❌ OpenRouter failed:", e)
+
+    # 4️⃣ FINAL FALLBACK
+    print("⚠️ Using fallback questions")
+
     return f"""
-1. Explain how you would use {missing_skills[0] if missing_skills else 'microservices'} in a real project?
-2. How would you implement {missing_skills[1] if len(missing_skills)>1 else 'CI/CD'}?
+1. How would you design a scalable system using {missing_skills[0] if missing_skills else 'microservices'}?
+2. Explain how {missing_skills[1] if len(missing_skills)>1 else 'CI/CD'} works in production?
 3. What are best practices for {missing_skills[2] if len(missing_skills)>2 else 'system design'}?
 """
-
 
 # 🔥 EVALUATE ANSWER
 def evaluate_answer(question, answer):
@@ -69,12 +75,27 @@ def evaluate_answer(question, answer):
     Keep it short.
     """
 
+# 1️⃣ GEMINI
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
+        print("👉 Trying Gemini...")
+        return gemini_call(prompt)
+    except Exception as e:
+        print("❌ Gemini failed:", e)
 
-        if response and hasattr(response, "text"):
-            return response.text
+    # 2️⃣ GROQ
+    try:
+        print("👉 Trying Groq...")
+        return groq_call(prompt)
+    except Exception as e:
+        print("❌ Groq failed:", e)
+
+    # 3️⃣ OPENROUTER
+    try:
+        print("👉 Trying OpenRouter...")
+        return openrouter_call(prompt)
+    except Exception as e:
+        print("❌ OpenRouter failed:", e)
+
 
     except Exception as e:
         print("Evaluation failed:", e)

@@ -48,14 +48,14 @@ if st.button("🔍 Analyze Resume"):
             missing = list(set(job_skills) - set(resume_skills))
 
             feedback = generate_feedback(resume_skills, missing, score)
-            questions = generate_questions(missing)
+            questions = generate_questions(missing).split("\n")
 
             result = {
                 "match_score": score,
                 "resume_skills": resume_skills,
                 "missing_skills": missing,
                 "feedback": feedback,
-                "questions": questions.split("\n")
+                "questions": questions if isinstance(questions, list) else questions.split("\n")
             }
 
             st.session_state.analysis_done = True
