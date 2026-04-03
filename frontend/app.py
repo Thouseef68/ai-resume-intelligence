@@ -33,32 +33,34 @@ if st.button("🔍 Analyze Resume"):
 
     if uploaded_file and job_desc:
 
-        text = extract_text_from_pdf(uploaded_file)
+        with st.spinner("🤖 AI is analyzing your resume..."):
 
-        clean_resume = clean_text(text)
-        clean_job = clean_text(job_desc)
+            text = extract_text_from_pdf(uploaded_file)
 
-        score = compute_similarity(clean_resume, clean_job)
+            clean_resume = clean_text(text)
+            clean_job = clean_text(job_desc)
 
-        resume_skills = extract_skills(clean_resume)
-        job_skills = extract_skills(clean_job)
+            score = compute_similarity(clean_resume, clean_job)
 
-        missing = list(set(job_skills) - set(resume_skills))
+            resume_skills = extract_skills(clean_resume)
+            job_skills = extract_skills(clean_job)
 
-        feedback = generate_feedback(resume_skills, missing, score)
-        questions = generate_questions(missing)
+            missing = list(set(job_skills) - set(resume_skills))
 
-        result = {
-            "match_score": score,
-            "resume_skills": resume_skills,
-            "missing_skills": missing,
-            "feedback": feedback,
-            "questions": questions.split("\n")
-        }
+            feedback = generate_feedback(resume_skills, missing, score)
+            questions = generate_questions(missing)
 
-        st.session_state.analysis_done = True
-        st.session_state.result = result
-        st.session_state.current_q = 0
+            result = {
+                "match_score": score,
+                "resume_skills": resume_skills,
+                "missing_skills": missing,
+                "feedback": feedback,
+                "questions": questions.split("\n")
+            }
+
+            st.session_state.analysis_done = True
+            st.session_state.result = result
+            st.session_state.current_q = 0
 
 
 # =========================

@@ -1,6 +1,7 @@
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -27,7 +28,15 @@ def generate_questions(missing_skills):
 
     try:
         model = genai.GenerativeModel("gemini-2.5-flash")
+        
+
+        start = time.time()
+
         response = model.generate_content(prompt)
+
+        # ⏱ STOP if too slow
+        if time.time() - start > 10:
+            raise Exception("Timeout")
 
         if response and hasattr(response, "text"):
             return response.text
