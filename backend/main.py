@@ -1,10 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from utils.parser import extract_text_from_pdf
+from backend.utils.parser import extract_text_from_pdf
 from ml.preprocess import clean_text
 from ml.matcher import compute_similarity
-from utils.skills import extract_skills, EXPECTED_SKILLS
-from utils.llm_feedback import generate_feedback
-from utils.interview_agent import generate_interview_question, evaluate_answer
+from backend.utils.skills import extract_skills, EXPECTED_SKILLS
+from backend.utils.llm_feedback import generate_feedback
+from backend.utils.interview_agent import generate_interview_question, evaluate_answer
 
 app = FastAPI()
 
