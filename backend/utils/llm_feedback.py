@@ -7,9 +7,15 @@ import requests
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    print("⚠️ GROQ_API_KEY missing")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("⚠️ GEMINI_API_KEY missing")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not OPENROUTER_API_KEY:
+    print("⚠️ OPENROUTER_API_KEY missing")
 
 genai.configure(api_key=GEMINI_API_KEY)
 # ---------------- GEMINI ----------------
