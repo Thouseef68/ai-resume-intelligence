@@ -1,1 +1,4 @@
 .env
+backend/ml/Resume.csv
+backend/ml/job_dataset.csv
+backend/ml/final_dataset.csv

@@ -5,8 +5,9 @@ import requests
 from dotenv import load_dotenv
 
 
-load_dotenv()
 
+load_dotenv()
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=API_KEY)
@@ -29,7 +30,7 @@ def openrouter_feedback(prompt):
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": "Bearer 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"
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}"
             },
             json={
                 "model": "mistral/mixtral-8x7b",
