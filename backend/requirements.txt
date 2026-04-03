@@ -1,4 +1,7 @@
 streamlit
+fastapi
+uvicorn[standard]
+python-multipart
 PyPDF2
 scikit-learn==1.7.2
 pandas
