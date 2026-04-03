@@ -1,5 +1,16 @@
 import streamlit as st
-import requests
+import sys
+
+# ✅ IMPORTANT: path first
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from backend.utils.parser import extract_text_from_pdf
+from backend.ml.preprocess import clean_text
+from backend.ml.matcher import compute_similarity
+from backend.utils.skills import extract_skills
+from backend.utils.llm_feedback import generate_feedback
+from backend.utils.interview_agent import generate_questions, evaluate_answer
 
 st.set_page_config(page_title="AI Resume Matcher", layout="wide")
 
@@ -14,26 +25,53 @@ with col1:
 with col2:
     job_desc = st.text_area("💼 Paste Job Description", height=200)
 
+
+# =========================
+# 🔍 ANALYZE
+# =========================
 if st.button("🔍 Analyze Resume"):
 
     if uploaded_file and job_desc:
 
-        files = {"resume": (uploaded_file.name, uploaded_file, "application/pdf")}
-        data = {"job_desc": job_desc}
+        text = extract_text_from_pdf(uploaded_file)
 
-        response = requests.post("http://127.0.0.1:8000/analyze", files=files, data=data)
-        result = response.json()
+        clean_resume = clean_text(text)
+        clean_job = clean_text(job_desc)
+
+        score = compute_similarity(clean_resume, clean_job)
+
+        resume_skills = extract_skills(clean_resume)
+        job_skills = extract_skills(clean_job)
+
+        missing = list(set(job_skills) - set(resume_skills))
+
+        feedback = generate_feedback(resume_skills, missing, score)
+        questions = generate_questions(missing)
+
+        result = {
+            "match_score": score,
+            "resume_skills": resume_skills,
+            "missing_skills": missing,
+            "feedback": feedback,
+            "questions": questions.split("\n")
+        }
+
         st.session_state.analysis_done = True
         st.session_state.result = result
-        st.session_state.resume_text = job_desc
+        st.session_state.current_q = 0
 
-if "analysis_done" in st.session_state and st.session_state.analysis_done:
+
+# =========================
+# 📊 RESULTS
+# =========================
+if "analysis_done" in st.session_state:
 
     result = st.session_state.result
 
     st.subheader("📊 Match Score")
-    st.progress(int(result["match_score"]))
     score = round(result["match_score"], 2)
+
+    st.progress(int(score))
 
     if score >= 75:
         st.success(f"🔥 Excellent Match: {score}%")
@@ -47,109 +85,58 @@ if "analysis_done" in st.session_state and st.session_state.analysis_done:
     col3, col4 = st.columns(2)
 
     with col3:
-        st.subheader("✅ Your Skills")
-        st.markdown("### 🧠 Skills Detected")
-        st.markdown(" ".join([f"`{skill}`" for skill in result["resume_skills"]]))
+        st.markdown("### 🧠 Skills")
+        st.markdown(" ".join([f"`{s}`" for s in result["resume_skills"]]))
 
     with col4:
-        st.subheader("❌ Missing Skills")
         if result["missing_skills"]:
-            st.markdown("### ❌ Missing Skills")
-            st.markdown(" ".join([f"`{skill}`" for skill in result["missing_skills"]]))
+            st.markdown("### ❌ Missing")
+            st.markdown(" ".join([f"`{s}`" for s in result["missing_skills"]]))
         else:
-            st.success("🎉 No Missing Skills — Strong Match!")
+            st.success("🎉 No Missing Skills!")
 
-    
     st.markdown("### 🤖 AI Feedback")
     st.info(result["feedback"])
 
 
-    # =========================
-    # 🎤 INTERVIEW MODE (FIXED)
-    # =========================
-
+# =========================
+# 🎤 INTERVIEW MODE
+# =========================
     st.subheader("🎤 AI Interview Mode")
 
-    if "history" not in st.session_state:
-        st.session_state.history = []
+    questions = result["questions"]
 
-    if "current_question" not in st.session_state:
-        st.session_state.current_question = None
+    if st.session_state.current_q < len(questions):
 
-    if "evaluation" not in st.session_state:
-        st.session_state.evaluation = None
+        question = questions[st.session_state.current_q]
 
-    if "answer_submitted" not in st.session_state:
-        st.session_state.answer_submitted = False
+        st.markdown(f"### 🎯 Q{st.session_state.current_q+1}: {question}")
 
-    # Load first question
-    if st.session_state.current_question is None:
-        response = requests.post(
-            "http://127.0.0.1:8000/next_question",
-            json={
-                "resume_text": st.session_state.resume_text,
-                "history": st.session_state.history
-            }
-        )
-        st.session_state.current_question = response.json()["question"]
+        answer = st.text_area("Your Answer")
 
-    # Show question
-    st.write("### Question:")
-    st.markdown(f"### 🎯 {st.session_state.current_question}")
+        if st.button("Submit Answer"):
 
-    answer = st.text_area("Your Answer", key="answer_box")
+            evaluation = evaluate_answer(question, answer)
 
-    # Submit
-    if st.button("Submit Answer") and answer:
+            st.session_state.evaluation = evaluation
+            st.session_state.answered = True
 
-        eval_res = requests.post(
-            "http://127.0.0.1:8000/evaluate",
-            json={
-                "question": st.session_state.current_question,
-                "answer": answer
-            }
-        )
+    # show evaluation
+    if "answered" in st.session_state and st.session_state.answered:
 
-        st.session_state.evaluation = eval_res.json()["evaluation"]
-        st.session_state.answer_submitted = True
+        eval_text = st.session_state.evaluation.lower()
 
-        st.session_state.history.append({
-            "question": st.session_state.current_question,
-            "answer": answer
-        })
-
-    # Show evaluation
-    if st.session_state.answer_submitted:
-        st.write("### 🧠 Evaluation:")
-        evaluation = st.session_state.evaluation.lower()
-
-        if "correct" in evaluation:
-            st.success("✅ Correct Answer!")
+        if "correct" in eval_text:
+            st.success("✅ Correct!")
             st.balloons()
-        elif "wrong" in evaluation:
-            st.error("❌ Incorrect Answer")
+        elif "wrong" in eval_text:
+            st.error("❌ Incorrect")
             st.snow()
         else:
-            st.info("🧠 Feedback:")
-            
+            st.info("🧠 Feedback")
+
         st.write(st.session_state.evaluation)
 
-    # Next question
-    if st.session_state.answer_submitted:
         if st.button("Next Question"):
-
-            with st.spinner("⏳ Generating next question..."):
-
-                next_q = requests.post(
-                "http://127.0.0.1:8000/next_question",
-                json={
-                    "resume_text": st.session_state.resume_text,
-                    "history": st.session_state.history
-                }
-            )
-
-            st.session_state.current_question = next_q.json()["question"]
-
-            st.session_state.answer_submitted = False
-            st.session_state.evaluation = None
-            st.session_state.answer_box = ""
+            st.session_state.current_q += 1
+            st.session_state.answered = False

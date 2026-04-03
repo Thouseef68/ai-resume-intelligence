@@ -1,6 +1,6 @@
 import os
 import google.generativeai as genai
-from transformers import pipeline
+
 import requests
 from dotenv import load_dotenv
 
@@ -12,16 +12,8 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=API_KEY)
 
-# 🔥 LOCAL MODEL
-local_model = pipeline("text-generation", model="distilgpt2")
 
-def local_feedback(prompt):
-    try:
-        result = local_model(prompt, max_length=120, num_return_sequences=1)
-        return result[0]["generated_text"]
-    except Exception as e:
-        print("Local model failed:", e)
-        return None
+
 
 
 # 🔥 OPENROUTER
@@ -95,20 +87,13 @@ def generate_feedback(resume_skills, missing_skills, score):
         print("✅ OpenRouter used")
         return response
 
-    # 🔥 3. LOCAL MODEL
-    response = local_feedback(prompt)
-    if response:
-        print("✅ Local model used")
-        return response
-
-    # 🔥 4. FINAL FALLBACK
-    print("⚠️ Using rule-based fallback")
-
+    # 🔥 FINAL FALLBACK (no transformers)
     return f"""
+    Basic Feedback:
+
     Match Score: {score:.2f}%
 
-    Improve:
-    {', '.join(missing_skills[:5])}
+    Strong skills: {', '.join(resume_skills[:3])}
 
-    Focus on system design and core CS fundamentals.
+    Improve: {', '.join(missing_skills[:5])}
     """

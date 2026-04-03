@@ -3,10 +3,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import pickle
 
-model = pickle.load(open("ml/model.pkl", "rb"))
-vectorizer = pickle.load(open("ml/vectorizer.pkl", "rb"))
+import os
 
-from ml.embedding_matcher import compute_embedding_score
+BASE_DIR = os.path.dirname(__file__)
+
+model_path = os.path.join(BASE_DIR, "model.pkl")
+vectorizer_path = os.path.join(BASE_DIR, "vectorizer.pkl")
+
+model = pickle.load(open(model_path, "rb"))
+vectorizer = pickle.load(open(vectorizer_path, "rb"))
+from backend.ml.embedding_matcher import compute_embedding_score
 
 def compute_similarity(resume, job):
 

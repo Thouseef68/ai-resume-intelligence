@@ -2,79 +2,72 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-2.5-flash")
 
 
-# 🔥 1. GENERATE DYNAMIC QUESTION
-def generate_interview_question(resume_text, history):
+# 🔥 GENERATE QUESTIONS
+def generate_questions(missing_skills):
 
     prompt = f"""
-    You are a senior technical interviewer.
+    You are a technical interviewer.
 
-    Candidate Resume:
-    {resume_text}
+    Based on these skills:
+    {missing_skills}
 
-    Previous Q&A:
-    {history}
-
-    Task:
-    - Ask ONE high-quality technical interview question
-    - Adjust difficulty based on candidate level
-    - Ask industry-level question
+    Generate 3 real-world technical interview questions.
 
     Rules:
-    - Only ONE question
+    - Only questions
     - No explanation
+    - Numbered (1,2,3)
     """
-    
+
     try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
 
-        if response and hasattr(response, "text") and response.text:
-            return response.text.strip()
+        if response and hasattr(response, "text"):
+            return response.text
 
     except Exception as e:
-        print("❌ Question generation failed:", e)
+        print("Gemini failed:", e)
 
-        if "quota" in str(e).lower() or "429" in str(e):
-            return "⚠️ API limit reached. Please wait a few seconds and try again."
+    # fallback
+    return f"""
+1. Explain how you would use {missing_skills[0] if missing_skills else 'microservices'} in a real project?
+2. How would you implement {missing_skills[1] if len(missing_skills)>1 else 'CI/CD'}?
+3. What are best practices for {missing_skills[2] if len(missing_skills)>2 else 'system design'}?
+"""
 
-        return "Explain how you would design a scalable backend system?"
 
-    # 🔥 fallback (no LLM)
-    return "Explain how you would design a scalable backend system using microservices?"
-
-
-# 🔥 2. EVALUATE ANSWER
+# 🔥 EVALUATE ANSWER
 def evaluate_answer(question, answer):
 
     prompt = f"""
     You are a strict technical interviewer.
 
     Question: {question}
-    Candidate Answer: {answer}
+    Answer: {answer}
 
     Evaluate:
-    1. Is answer correct?
-    2. What is missing?
-    3. Provide correct answer
+    - Is it correct?
+    - What is missing?
+    - Give correct answer
 
-    Keep it structured and clear.
+    Keep it short.
     """
 
     try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
 
-        if response and hasattr(response, "text") and response.text:
-            return response.text.strip()
+        if response and hasattr(response, "text"):
+            return response.text
 
     except Exception as e:
-        print("❌ Evaluation failed:", e)
+        print("Evaluation failed:", e)
 
-    return "Evaluation unavailable. Please try again."
+    return "Evaluation not available."
