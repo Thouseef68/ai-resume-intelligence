@@ -89,21 +89,21 @@ def generate_feedback(resume_skills, missing_skills, score):
     """
 
     print("🔍 Starting LLM fallback system...")
-
-    # 1️⃣ GEMINI
-    try:
-        print("👉 Trying Gemini...")
-        return gemini_call(prompt)
-    except Exception as e:
-        print("❌ Gemini failed:", e)
-
-    # 2️⃣ GROQ
+    # 1️⃣ GROQ
     try:
         print("👉 Trying Groq...")
         return groq_call(prompt)
     except Exception as e:
         print("❌ Groq failed:", e)
 
+    # 2️⃣ GEMINI
+    try:
+        print("👉 Trying Gemini...")
+        return gemini_call(prompt)
+    except Exception as e:
+        print("❌ Gemini failed:", e)
+
+    
     # 3️⃣ OPENROUTER
     try:
         print("👉 Trying OpenRouter...")
