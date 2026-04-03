@@ -31,7 +31,8 @@ def groq_call(prompt):
         json={
             "model": "llama-3.1-8b-instant",
             "messages": [{"role": "user", "content": prompt}]
-        }
+        },
+        timeout=10
     )
 
     data = response.json()
@@ -54,7 +55,8 @@ def openrouter_call(prompt):
         json={
             "model":"openrouter/auto",
             "messages": [{"role": "user", "content": prompt}]
-        }
+        },
+        timeout=10
     )
 
     data = response.json()
